@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Countdown Năm Mới 2026 + Minigame</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family: 'Noto Sans', sans-serif;
+  overflow-y:auto; 
+  background:linear-gradient(#0a0a2a,#2a0a0a);
+  color:#fff;
+  text-align:center;
+  min-height:100vh;
+}
+#startScreen{
+  position:fixed; inset:0;
+  display:flex; justify-content:center; align-items:center;
+  background:#0a0a2a;
+  font-size:36px; font-weight:bold;
+  cursor:pointer; z-index:20;
+  padding:20px; border-radius:16px; transition:0.3s;
+}
+#startScreen:hover{background:#1a1a4a;}
+
+.wrapper{
+  max-width:700px; margin:auto; padding:80px 20px 200px; position:relative; z-index:5; display:none;
+}
+
+.countdown{
+  display:inline-block; padding:20px 30px;
+  border:2px solid #f3a5b0; border-radius:16px;
+  background:rgba(255,255,255,0.1); margin-bottom:60px;
+}
+.time{font-size:42px;letter-spacing:4px;}
+.text{font-size:18px;margin-top:12px;color:#ffd1dc}
+
+section{
+  margin:50px 0; opacity:0; transform:translateY(20px); transition:0.6s; 
+  padding:20px 25px; border:2px solid #f3a5b0; border-radius:14px; background:rgba(255,255,255,0.1);
+}
+section.show{opacity:1; transform:translateY(0);}
+
+footer{margin-top:50px; font-size:22px; opacity:0; transition:2s;}
+footer.show{opacity:1}
+
+#flash{position:fixed; inset:0; background:white; opacity:0; pointer-events:none; z-index:5;}
+#flash.show{animation:flash .4s ease-out;}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+
+@keyframes shake{0%{transform:translate(0)}25%{transform:translate(-4px,3px)}50%{transform:translate(4px,-3px)}75%{transform:translate(-3px,2px)}100%{transform:translate(0)}}
+body.shake{animation:shake .4s linear}
+
+canvas{position:fixed; inset:0; pointer-events:none; z-index:1;}
+
+#letter{position:fixed; inset:0; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:1s; z-index:20;}
+#letter.show{opacity:1; pointer-events:auto;}
+.letter-paper{
+  background:#fff;
+  padding:40px;
+  border-radius:16px;
+  max-width:400px;
+  max-height:70vh;   
+  text-align:left;
+  line-height:1.6;
+  color:#333;
+  transform:scale(0.9);
+  transition:transform 0.5s;
+  overflow-y:auto;   
+}
+#letter.show .letter-paper{transform:scale(1);}
+#letterImage{width:100%; margin-top:15px; border-radius:12px;}
+
+/* Music & playlist */
+#musicControl{position:fixed;top:20px;right:20px;z-index:30; display:flex; flex-direction:column; align-items:flex-end;}
+#musicControl button{padding:6px 12px; margin-bottom:5px; cursor:pointer; border:none; border-radius:6px; background:#ff80aa; color:#fff; font-weight:bold;}
+#playlist{
+  max-height:0; overflow:hidden; opacity:0;
+  transition: max-height 0.4s ease, opacity 0.4s ease;
+  background:rgba(0,0,0,0.5); padding:10px; border-radius:8px; color:white; margin-top:5px;
+}
+#playlist.show{max-height:300px; opacity:1;}
+#playlist ul{list-style:none; padding:0; margin:0;}
+#playlist li{cursor:pointer; margin-bottom:5px; color:lightblue;}
+#playlist li.active{color:yellow;}
+
+/* Minigames bảng dưới countdown */
+#minigames{
+  display:block;
+  background: rgba(0,0,0,0.5);
+  padding: 15px;
+  border-radius: 8px;
+  color: white;
+  max-width: 400px;
+  margin: 30px auto 0; 
+  border: 2px solid #ff80aa;
+  text-align: center;
+  z-index:5;
+}
+#minigames p{margin-bottom:10px; font-weight:bold; cursor:pointer;}
+#gameList{
+  max-height:0; overflow:hidden; opacity:0; transition: max-height 0.4s ease, opacity 0.4s ease; display:flex; flex-direction: column; gap: 8px;
+}
+#gameList.show{max-height:400px; opacity:1;}
+#gameList button{
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: #80d4ff;
+  color: #000;
+  font-weight: bold;
+}
+#gameList button.unlock{
+  cursor:pointer;
+  opacity:1;
+}
+
+/* Popup game */
+.gamePopup{
+  position:fixed; inset:0; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.7); z-index:50; display:none;
+}
+.gameContent{background:#fff; color:#000; padding:30px; border-radius:16px; max-width:400px; text-align:center;}
+.gameContent button{margin-top:15px; padding:8px 12px; border-radius:6px; border:none; background:#80d4ff; cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="startScreen">BẮT ĐẦU</div>
+
+<audio id="bgMusic" loop></audio>
+<audio id="countdownMusic"><source src="countdown.mp3" type="audio/mpeg"></audio>
+<audio id="unlockSound"><source src="unlock.mp3" type="audio/mpeg"></audio>
+
+<div id="flash"></div>
+<canvas id="fireworks"></canvas>
+
+<div id="letter">
+  <div class="letter-paper">
+    <p><b>Cảm ơn Nguyệt đã đến bên Tân nhéee</b> ...</p>
+    <p style="text-align:right; margin-top:10px;">— Tân</p>
+    <img id="letterImage" src="newyear.jpg" alt="Ảnh kỷ niệm">
+  </div>
+</div>
+
+<div class="wrapper">
+  <div class="countdown">
+    <div class="time" id="time">-- : -- : -- : --</div>
+    <div class="text" id="status">Đợi các mốc thời gian nhé…</div>
+  </div>
+
+  <section id="s48">Tân từng không muốn vội vàng.</section>
+  <section id="s24">Năm nay thật là không dễ dàng.</section>
+  <section id="s12">Nhưng Nguyệt đã làm mọi thứ nhẹ nhàng hơn.</section>
+  <section id="s1">Tân cảm thấy may mắn vì có Nguyệt ở đây ❤️.</section>
+
+  <div id="minigames">
+    <p id="toggleGames">Chọn mini-game ▼</p>
+    <div id="gameList">
+      <button id="game1" disabled>Game 1</button>
+      <button id="game2" disabled>Game 2</button>
+      <button id="game3" disabled>Game 3</button>
+      <button id="game4" disabled>Game 4</button>
+    </div>
+  </div>
+
+  <footer id="final">Chúc mừng năm mới!</footer>
+</div>
+
+<div id="musicControl" style="display:none">
+  <button id="toggleMusic">Tắt nhạc</button>
+  <button id="togglePlaylist">Danh sách nhạc ▼</button>
+  <div id="playlist">
+    <ul id="trackList"></ul>
+  </div>
+</div>
+
+<div id="gamePopup" class="gamePopup">
+  <div class="gameContent" id="gameContent">
+    <h3 id="gameTitle"></h3>
+    <div id="gameBody"></div>
+    <button id="closeGame">Hoàn thành</button>
+  </div>
+</div>
+
+<script>
+// DOM
+const startScreen=document.getElementById("startScreen");
+const wrapper=document.querySelector(".wrapper");
+const countdownBox=document.querySelector(".countdown");
+const minigamesDiv=document.getElementById("minigames");
+const bgMusic=document.getElementById("bgMusic");
+const countdownMusic=document.getElementById("countdownMusic");
+const unlockSound=document.getElementById("unlockSound");
+const letter=document.getElementById("letter");
+const flash=document.getElementById("flash");
+const musicControl=document.getElementById("musicControl");
+const timeEl=document.getElementById("time");
+const s48=document.getElementById("s48");
+const s24=document.getElementById("s24");
+const s12=document.getElementById("s12");
+const s1=document.getElementById("s1");
+const final=document.getElementById("final");
+let ended=false;
+
+// Playlist 10 bài nhạc
+const toggleMusicBtn=document.getElementById("toggleMusic");
+const togglePlaylistBtn=document.getElementById("togglePlaylist");
+const playlistDiv=document.getElementById("playlist");
+const trackListEl=document.getElementById("trackList");
+let musicOn=true;
+let playlist=[...Array(10).keys()].map(i=>({name:`Nhạc ${i+1}`,src:`track${i+1}.mp3`})); 
+let currentTrackIndex=0;
+playlist.forEach((track,i)=>{
+  const li=document.createElement("li");
+  li.innerText=track.name;
+  li.onclick=()=>{currentTrackIndex=i; playTrack(i); updatePlaylistUI();}
+  trackListEl.appendChild(li);
+});
+function updatePlaylistUI(){trackListEl.querySelectorAll("li").forEach((li,i)=>li.classList.toggle("active",i===currentTrackIndex));}
+function playTrack(i){bgMusic.src=playlist[i].src; if(musicOn) bgMusic.play().catch(()=>{});}
+bgMusic.onended = function() {
+  let next;
+  do { next=Math.floor(Math.random()*playlist.length); } while(next===currentTrackIndex && playlist.length>1);
+  currentTrackIndex=next;
+  playTrack(currentTrackIndex);
+  updatePlaylistUI();
+}
+toggleMusicBtn.onclick=()=>{musicOn=!musicOn; toggleMusicBtn.innerText=musicOn?"Tắt nhạc":"Bật nhạc"; if(musicOn) playTrack(currentTrackIndex); else bgMusic.pause();}
+togglePlaylistBtn.onclick=()=>{playlistDiv.classList.toggle("show"); togglePlaylistBtn.innerText=playlistDiv.classList.contains("show")?"Danh sách nhạc ▲":"Danh sách nhạc ▼";}
+
+// Minigame toggle
+const toggleGames=document.getElementById("toggleGames");
+const gameList=document.getElementById("gameList");
+toggleGames.onclick = ()=>{gameList.classList.toggle("show"); toggleGames.innerText=gameList.classList.contains("show")?"Chọn mini-game ▲":"Chọn mini-game ▼";}
+
+// Minigames
+const gameBtns=[document.getElementById("game1"),document.getElementById("game2"),document.getElementById("game3"),document.getElementById("game4")];
+const gamePopup=document.getElementById("gamePopup");
+const gameTitle=document.getElementById("gameTitle");
+const gameBody=document.getElementById("gameBody");
+const closeGame=document.getElementById("closeGame");
+function unlockGame(id){
+  const btn=document.getElementById(id);
+  if(btn.disabled){
+    btn.disabled=false; btn.classList.add("unlock"); btn.onclick=()=>startGame(id);
+    unlockSound.currentTime=0; unlockSound.play();
+  }
+}
+function startGame(id){
+  gamePopup.style.display="flex"; gameBody.innerHTML="";
+  if(id==="game1"){gameTitle.innerText="Game 1"; const btn=document.createElement("button"); let score=0; btn.innerText="Click vào tôi!"; btn.onclick=()=>{score++; btn.innerText=`Click tiếp! (${score})`}; gameBody.appendChild(btn);}
+  else if(id==="game2"){gameTitle.innerText="Game 2"; const shapes=["♥","★","☀","☁"]; const correct=shapes[Math.floor(Math.random()*shapes.length)]; const div=document.createElement("div"); div.style.fontSize="40px"; div.innerText=correct; gameBody.appendChild(div); shapes.forEach(s=>{const b=document.createElement("button"); b.innerText=s; b.onclick=()=>alert(s===correct?"Chính xác!":"Sai rồi!"); gameBody.appendChild(b);});}
+  else if(id==="game3"){gameTitle.innerText="Game 3"; const div=document.createElement("div"); div.innerText="(Drag & drop đơn giản)"; gameBody.appendChild(div);}
+  else if(id==="game4"){gameTitle.innerText="Game 4"; const div=document.createElement("div"); div.innerText="(Ghép cặp biểu tượng nhanh)"; gameBody.appendChild(div);}
+}
+closeGame.onclick=()=>gamePopup.style.display="none";
+
+// Countdown
+const targetDate = new Date("2026-01-01T00:00:00").getTime();
+function startCountdownRealTime(){
+  wrapper.style.display="block"; musicControl.style.display="flex"; playTrack(currentTrackIndex); updatePlaylistUI(); minigamesDiv.style.display="block";
+  startIdleParticles();
+
+  const timer=setInterval(()=>{
+    const now = new Date().getTime();
+    let diff=Math.floor((targetDate-now)/1000);
+    if(diff<0) diff=0;
+
+    const days=Math.floor(diff/86400);
+    const hours=Math.floor((diff%86400)/3600);
+    const minutes=Math.floor((diff%3600)/60);
+    const seconds=diff%60;
+
+    timeEl.innerText=`${String(days).padStart(2,'0')} : ${String(hours).padStart(2,'0')} : ${String(minutes).padStart(2,'0')} : ${String(seconds).padStart(2,'0')}`;
+
+    if(diff <= 48*3600 && !s48.classList.contains("show")) { s48.classList.add("show"); unlockGame("game1"); document.getElementById("status").innerText = "Còn 2 ngày thôi...";}
+    if(diff <= 24*3600 && !s24.classList.contains("show")) { s24.classList.add("show"); unlockGame("game2"); document.getElementById("status").innerText = "Sắp hết năm rồi hả...";}
+    if(diff <= 12*3600 && !s12.classList.contains("show")) { s12.classList.add("show"); unlockGame("game3"); document.getElementById("status").innerText = "Sắp tới thiệt rồi...";}
+    if(diff <= 1*3600 && !s1.classList.contains("show")) { s1.classList.add("show"); unlockGame("game4"); document.getElementById("status").innerText = "Một chút nữa thôi...";}
+
+    if(diff<=0 && !ended){ended=true; clearInterval(timer); explodeMoment();}
+  },1000);
+}
+
+// Particle + fireworks
+const canvas=document.getElementById("fireworks"); 
+const ctx=canvas.getContext("2d");
+canvas.width=innerWidth; canvas.height=innerHeight;
+window.onresize=()=>{canvas.width=innerWidth; canvas.height=innerHeight;}
+let particles=[], sparks=[];
+const particleShapes = ["✦","★","✧","❄","☀","☁","❤"];
+function spawnParticles(count=5){
+  for(let i=0;i<count;i++){
+    const x=Math.random()*canvas.width,
+          y=canvas.height+10,
+          angle=-Math.PI/2+(Math.random()-0.5)/2,
+          speed=1+Math.random()*3,
+          size=10+Math.random()*10,
+          wind=(Math.random()-0.5)*0.5,
+          shape = particleShapes[Math.floor(Math.random()*particleShapes.length)];
+    particles.push({x,y,vx:Math.cos(angle)*speed+wind, vy:Math.sin(angle)*speed, life:100, alpha:1, shape, size});
+  }
+}
+function animateParticles(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.alpha-=0.01;
+    if(p.alpha<=0){particles.splice(i,1); continue;}
+    ctx.fillStyle=`rgba(255,255,255,${p.alpha})`; ctx.font=`${p.size}px Arial`; ctx.fillText(p.shape,p.x,p.y);
+  }
+  for(let i=sparks.length-1;i>=0;i--){
+    const s=sparks[i]; s.x+=s.vx; s.y+=s.vy; s.alpha-=0.02; s.life--;
+    if(s.alpha<=0||s.life<=0){sparks.splice(i,1); continue;}
+    ctx.fillStyle=`rgba(${hexToRgb(s.color)},${s.alpha})`;
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.size,0,2*Math.PI); ctx.fill();
+  }
+  requestAnimationFrame(animateParticles);
+}
+function startIdleParticles(){setInterval(()=>spawnParticles(5),300); animateParticles();}
+function hexToRgb(hex){hex=hex.replace("#",""); const bigint=parseInt(hex,16); const r=(bigint>>16)&255; const g=(bigint>>8)&255; const b=bigint&255; return `${r},${g},${b}`;}
+
+// Launch rực rỡ
+function launchFirework() {
+    const x = Math.random() * canvas.width;
+    const y = canvas.height;
+    const colors = ["#ff4d4d","#ffcc00","#33ff33","#33ccff","#ff33ff"];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const particlesCount = 30 + Math.floor(Math.random()*20);
+    for(let i=0;i<particlesCount;i++){
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = 2 + Math.random()*4;
+        sparks.push({
+            x: x, y: y,
+            vx: Math.cos(angle)*speed,
+            vy: Math.sin(angle)*speed - (5 + Math.random()*5),
+            life: 80 + Math.random()*40,
+            alpha: 1,
+            color: color,
+            size: 2 + Math.random()*2
+        });
+    }
+}
+
+// Kết thúc countdown
+function explodeMoment(){
+  countdownBox.style.display="none"; s48.style.display="none"; s24.style.display="none"; s12.style.display="none"; s1.style.display="none";
+  minigamesDiv.style.display="none"; musicControl.style.display="none"; bgMusic.pause();
+  countdownMusic.currentTime=0; countdownMusic.play();
+  flash.classList.add("show"); document.body.classList.add("shake"); setTimeout(()=>document.body.classList.remove("shake"),500);
+
+  const fireworkInterval = setInterval(launchFirework,300);
+  setTimeout(()=>{
+      letter.classList.add("show");
+      final.classList.add("show");
+      clearInterval(fireworkInterval);
+  },5000);
+}
+
+// Start
+startScreen.onclick=()=>{startScreen.style.display="none"; currentTrackIndex=0; musicOn=true; playTrack(currentTrackIndex); startCountdownRealTime();}
+</script>
+</body>
+</html>
